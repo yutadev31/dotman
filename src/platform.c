@@ -126,52 +126,34 @@ int detect_platform(struct platform *platform) {
 
 #ifdef _WIN32
   platform->os = OS_WINDOWS;
-  return 0;
+
+#elif defined(__linux__)
+  platform->os = OS_LINUX;
+  if (detect_linux_distro(platform->distro, sizeof(platform->distro)) != 0) {
+    goto fail;
+  }
+
+#elif defined(__FreeBSD__)
+  platform->os = OS_FREEBSD;
+
+#elif defined(__OpenBSD__)
+  platform->os = OS_OPENBSD;
+
+#elif defined(__NetBSD__)
+  platform->os = OS_NETBSD;
+
+#elif defined(__DragonFly__)
+  platform->os = OS_DRAGONFLY;
+
+#elif defined(__sun)
+  platform->os = OS_SUNOS;
+
+#elif defined(__APPLE__) && defined(__MACH__)
+  platform->os = OS_MACOS;
+
 #else
-  struct utsname uts;
-
-  /* Detect the operating system. */
-  if (uname(&uts) == -1) {
-    return -1;
-  }
-
-  if (strcmp(uts.sysname, "Linux") == 0) {
-    platform->os = OS_LINUX;
-    if (detect_linux_distro(platform->distro, sizeof(platform->distro)) == -1) {
-      goto fail;
-    }
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "FreeBSD") == 0) {
-    platform->os = OS_FREEBSD;
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "OpenBSD") == 0) {
-    platform->os = OS_OPENBSD;
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "NetBSD") == 0) {
-    platform->os = OS_NETBSD;
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "DragonFly") == 0) {
-    platform->os = OS_DRAGONFLY;
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "SunOS") == 0) {
-    platform->os = OS_SUNOS;
-    return 0;
-  }
-
-  if (strcmp(uts.sysname, "Darwin") == 0) {
-    platform->os = OS_MACOS;
-    return 0;
-  }
+  goto fail;
+#endif
 
   return 0;
 
@@ -179,7 +161,6 @@ fail:
   platform->os = OS_UNKNOWN;
   platform->distro[0] = '\0';
   return -1;
-#endif
 }
 
 bool is_nixos(const struct platform *platform) {
