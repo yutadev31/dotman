@@ -32,7 +32,7 @@ jobs:
 
       - name: Upload release binary
         if: github.ref_type == 'tag' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dotman-linux-x86_64
           path: build/dotman
