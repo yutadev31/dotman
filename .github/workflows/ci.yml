@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -28,6 +29,13 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Upload release binary
+        if: github.ref_type == 'tag' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotman-linux-x86_64
+          path: build/dotman
 
   other-unix:
     name: Build (${{ matrix.name }})
@@ -62,7 +70,7 @@ jobs:
           - name: OmniOS r151058
             operating_system: omnios
             version: 'r151058'
-            install_command: sudo pkg install -y cmake ninja
+            install_command: sudo pkg install --accept cmake ninja
             command_prefix: ''
     steps:
       - name: Check out repository
@@ -78,3 +86,29 @@ jobs:
         run: ${{ matrix.command_prefix }} cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: ${{ matrix.command_prefix }} cmake --build build --parallel
+
+  release:
+    name: Publish release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [build, other-unix]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: dotman-linux-x86_64
+          path: release
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/dotman --clobber
+          else
+            gh release create "$TAG" release/dotman --generate-notes
+          fi
