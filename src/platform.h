@@ -13,6 +13,7 @@ enum os_type {
   OS_SUNOS,
   OS_ILLUMOS,
   OS_MACOS,
+  OS_WINDOWS,
 };
 
 struct platform {

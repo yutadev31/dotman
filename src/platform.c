@@ -1,11 +1,15 @@
+#ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 #include "platform.h"
+#include <string.h>
+
+#ifndef _WIN32
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/utsname.h>
 
 static char *decode_os_release_value(char *value) {
@@ -99,6 +103,19 @@ static int detect_linux_distro(char *distro, size_t size) {
   return -1;
 }
 
+#else
+
+int detect_linux_distro_file(const char *path, char *distro, size_t size) {
+  (void)path;
+  if (distro == NULL || size == 0) {
+    return -1;
+  }
+  distro[0] = '\0';
+  return -1;
+}
+
+#endif
+
 int detect_platform(struct platform *platform) {
   if (platform == NULL) {
     return -1;
@@ -107,6 +124,10 @@ int detect_platform(struct platform *platform) {
   platform->os = OS_UNKNOWN;
   platform->distro[0] = '\0';
 
+#ifdef _WIN32
+  platform->os = OS_WINDOWS;
+  return 0;
+#else
   struct utsname uts;
 
   /* Detect the operating system. */
@@ -158,6 +179,7 @@ fail:
   platform->os = OS_UNKNOWN;
   platform->distro[0] = '\0';
   return -1;
+#endif
 }
 
 bool is_nixos(const struct platform *platform) {
