@@ -28,3 +28,53 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --parallel
+
+  other-unix:
+    name: Build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: cpa.sh {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: FreeBSD 15.1
+            operating_system: freebsd
+            version: '15.1'
+            install_command: sudo pkg install -y cmake ninja
+            command_prefix: ''
+          - name: OpenBSD 7.9
+            operating_system: openbsd
+            version: '7.9'
+            install_command: sudo pkg_add cmake ninja
+            command_prefix: ''
+          - name: NetBSD 11.0
+            operating_system: netbsd
+            version: '11.0'
+            install_command: sudo pkgin -y install cmake ninja-build
+            command_prefix: PATH=/usr/pkg/bin:$PATH
+          - name: DragonFly BSD 6.4.2
+            operating_system: dragonflybsd
+            version: '6.4.2'
+            install_command: sudo pkg install -y cmake ninja
+            command_prefix: ''
+          - name: OmniOS r151058
+            operating_system: omnios
+            version: 'r151058'
+            install_command: sudo pkg install -y cmake ninja
+            command_prefix: ''
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Start ${{ matrix.name }} VM
+        uses: cross-platform-actions/action@v1.5.0
+        with:
+          operating_system: ${{ matrix.operating_system }}
+          version: ${{ matrix.version }}
+      - name: Install build tools
+        run: ${{ matrix.install_command }}
+      - name: Configure
+        run: ${{ matrix.command_prefix }} cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: ${{ matrix.command_prefix }} cmake --build build --parallel
