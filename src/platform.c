@@ -97,6 +97,11 @@ int detect_platform(struct platform *platform) {
     return 0;
   }
 
+  if (strcmp(uts.sysname, "SunOS") == 0) {
+    platform->os = OS_ILLUMOS;
+    return 0;
+  }
+
   if (strcmp(uts.sysname, "Darwin") == 0) {
     platform->os = OS_MACOS;
     return 0;
