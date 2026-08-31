@@ -25,8 +25,10 @@ struct options {
 };
 
 static void free_paths(struct path_list *list) {
-  for (size_t i = 0; i < list->len; i++)
+  for (size_t i = 0; i < list->len; i++) {
     free(list->items[i]);
+  }
+
   free(list->items);
 }
 
@@ -41,6 +43,7 @@ static int add_path(struct path_list *list, const char *path) {
     list->items = items;
     list->cap = cap;
   }
+
   list->items[list->len] = strdup(path);
   if (list->items[list->len] == NULL) {
     perror("strdup");
@@ -51,24 +54,35 @@ static int add_path(struct path_list *list, const char *path) {
 }
 
 static bool valid_path(const char *path) {
-  if (*path == '/' || *path == '\0')
+  if (*path == '/' || *path == '\0') {
     return false;
+  }
+
   const char *part = path;
+
   for (const char *p = path;; p++) {
-    if (*p != '/' && *p != '\0')
+    if (*p != '/' && *p != '\0') {
       continue;
+    }
+
     size_t len = (size_t)(p - part);
+
     if (len == 0 || (len == 1 && part[0] == '.') ||
-        (len == 2 && part[0] == '.' && part[1] == '.'))
+        (len == 2 && part[0] == '.' && part[1] == '.')) {
       return false;
-    if (*p == '\0')
+    }
+    if (*p == '\0') {
       return true;
+    }
+
     part = p + 1;
   }
 }
 
 static bool paths_overlap(const char *a, const char *b) {
-  size_t a_len = strlen(a), b_len = strlen(b);
+  size_t a_len = strlen(a);
+  size_t b_len = strlen(b);
+
   return strcmp(a, b) == 0 || (strncmp(a, b, a_len) == 0 && b[a_len] == '/') ||
          (strncmp(b, a, b_len) == 0 && a[b_len] == '/');
 }
@@ -84,23 +98,34 @@ static int path_for(char *buffer, size_t size, const char *prefix,
 
 static int mkdir_parents(const char *path) {
   char buffer[PATH_MAX];
-  if (snprintf(buffer, sizeof(buffer), "%s", path) >= (int)sizeof(buffer))
+  if (snprintf(buffer, sizeof(buffer), "%s", path) >= (int)sizeof(buffer)) {
     return -1;
+  }
+
   char *slash = strrchr(buffer, '/');
-  if (slash == NULL)
+  if (slash == NULL) {
     return 0;
+  }
+
   *slash = '\0';
+
   for (char *p = buffer + 1; *p != '\0'; p++) {
-    if (*p != '/')
+    if (*p != '/') {
       continue;
+    }
+
     *p = '\0';
-    if (mkdir(buffer, 0700) == -1 && errno != EEXIST)
+    if (mkdir(buffer, 0700) == -1 && errno != EEXIST) {
       goto fail;
+    }
     *p = '/';
   }
-  if (mkdir(buffer, 0700) == -1 && errno != EEXIST)
+  if (mkdir(buffer, 0700) == -1 && errno != EEXIST) {
     goto fail;
+  }
+
   return 0;
+
 fail:
   fprintf(stderr, "mkdir: %s: %s\n", buffer, strerror(errno));
   return -1;
@@ -114,11 +139,16 @@ static bool is_managed_link(const char *source, const char *destination) {
 }
 
 static char *trim(char *value) {
-  while (*value == ' ' || *value == '\t')
+  while (*value == ' ' || *value == '\t') {
     value++;
+  }
+
   char *end = value + strlen(value);
-  while (end > value && (end[-1] == ' ' || end[-1] == '\t'))
+
+  while (end > value && (end[-1] == ' ' || end[-1] == '\t')) {
     *--end = '\0';
+  }
+
   return value;
 }
 
@@ -137,8 +167,10 @@ static int parse_bool(const char *name, const char *value, bool *result) {
 
 static int load_configuration(const char *repo, struct config *config) {
   char path[PATH_MAX];
-  if (path_for(path, sizeof(path), repo, "dotconf.sh") == -1)
+  if (path_for(path, sizeof(path), repo, "dotconf.sh") == -1) {
     return -1;
+  }
+
   FILE *fp = fopen(path, "r");
   if (fp == NULL) {
     fprintf(stderr, "Error: create %s before running dotman.\n", path);
@@ -146,15 +178,20 @@ static int load_configuration(const char *repo, struct config *config) {
   }
   config->gui = true;
   config->vm = false;
+
   char line[PATH_MAX];
   while (fgets(line, sizeof(line), fp) != NULL) {
     line[strcspn(line, "\r\n")] = '\0';
     char *key = trim(line);
-    if (strncmp(key, "export ", 7) == 0)
+    if (strncmp(key, "export ", 7) == 0) {
       key = trim(key + 7);
+    }
+
     char *equals = strchr(key, '=');
-    if (equals == NULL)
+    if (equals == NULL) {
       continue;
+    }
+
     *equals = '\0';
     char *value = trim(equals + 1);
     size_t len = strlen(value);
@@ -171,6 +208,7 @@ static int load_configuration(const char *repo, struct config *config) {
       return -1;
     }
   }
+
   bool ok = !ferror(fp);
   fclose(fp);
   return ok ? 0 : -1;
@@ -179,8 +217,10 @@ static int load_configuration(const char *repo, struct config *config) {
 static int load_dotlist(const char *repo, const struct config *config,
                         struct path_list *paths) {
   char list_path[PATH_MAX];
-  if (path_for(list_path, sizeof(list_path), repo, "dotlist.txt") == -1)
+  if (path_for(list_path, sizeof(list_path), repo, "dotlist.txt") == -1) {
     return -1;
+  }
+
   FILE *fp = fopen(list_path, "r");
   if (fp == NULL) {
     fprintf(stderr, "fopen: %s: %s\n", list_path, strerror(errno));
@@ -190,26 +230,34 @@ static int load_dotlist(const char *repo, const struct config *config,
   while (fgets(line, sizeof(line), fp) != NULL) {
     line[strcspn(line, "\r\n")] = '\0';
     char *scope = trim(line);
-    if (*scope == '\0' || *scope == '#')
+    if (*scope == '\0' || *scope == '#') {
       continue;
+    }
+
     char *separator = strpbrk(scope, " \t");
-    if (separator == NULL)
+    if (separator == NULL) {
       goto invalid;
+    }
+
     *separator++ = '\0';
     char *path = trim(separator);
     if ((strcmp(scope, "base") != 0 && strcmp(scope, "gui") != 0) ||
-        !valid_path(path))
+        !valid_path(path)) {
       goto invalid;
-    if (strcmp(scope, "gui") == 0 && !config->gui)
+    }
+    if (strcmp(scope, "gui") == 0 && !config->gui) {
       continue;
+    }
     if (add_path(paths, path) == -1) {
       fclose(fp);
       return -1;
     }
   }
+
   bool ok = !ferror(fp);
   fclose(fp);
   return ok ? 0 : -1;
+
 invalid:
   fprintf(stderr, "Invalid dotlist entry: %s\n", line);
   fclose(fp);
@@ -220,42 +268,58 @@ static int preflight(const char *repo, const struct path_list *paths) {
   for (size_t i = 0; i < paths->len; i++) {
     char source[PATH_MAX];
     if (snprintf(source, sizeof(source), "%s/home/%s", repo, paths->items[i]) >=
-        (int)sizeof(source))
+        (int)sizeof(source)) {
       return -1;
+    }
+
     struct stat st;
     if (lstat(source, &st) == -1) {
       fprintf(stderr, "Error: managed source does not exist: %s\n", source);
       return -1;
     }
-    for (size_t j = 0; j < i; j++)
+    for (size_t j = 0; j < i; j++) {
       if (paths_overlap(paths->items[i], paths->items[j])) {
         fprintf(stderr, "Error: managed paths must not overlap: %s and %s\n",
                 paths->items[j], paths->items[i]);
         return -1;
       }
+    }
   }
   return 0;
 }
 
 static int install_paths(const char *repo, const char *home,
                          const struct path_list *paths, bool dry_run) {
-  char backup_root[PATH_MAX], backup_template[PATH_MAX];
+  char backup_root[PATH_MAX];
+  char backup_template[PATH_MAX];
+
   if (path_for(backup_root, sizeof(backup_root), home, ".dotfiles-backup") ==
           -1 ||
       snprintf(backup_template, sizeof(backup_template), "%s/install.XXXXXXXX",
-               backup_root) >= (int)sizeof(backup_template))
+               backup_root) >= (int)sizeof(backup_template)) {
     return -1;
+  }
+
   char *backup_dir = NULL;
-  struct path_list moved = {0}, created = {0};
+  struct path_list moved = {0};
+  struct path_list created = {0};
   int result = -1;
+
   for (size_t i = 0; i < paths->len; i++) {
-    char source[PATH_MAX], destination[PATH_MAX], backup[PATH_MAX];
+    char source[PATH_MAX];
+    char destination[PATH_MAX];
+    char backup[PATH_MAX];
+
     if (snprintf(source, sizeof(source), "%s/home/%s", repo, paths->items[i]) >=
             (int)sizeof(source) ||
-        path_for(destination, sizeof(destination), home, paths->items[i]) == -1)
+        path_for(destination, sizeof(destination), home, paths->items[i]) ==
+            -1) {
       goto rollback;
-    if (is_managed_link(source, destination))
+    }
+    if (is_managed_link(source, destination)) {
       continue;
+    }
+
     struct stat st;
     bool exists = lstat(destination, &st) == 0;
     if (!exists && errno != ENOENT) {
@@ -263,8 +327,9 @@ static int install_paths(const char *repo, const char *home,
       goto rollback;
     }
     if (dry_run) {
-      if (exists)
+      if (exists) {
         printf("Would move %s to a new backup directory\n", destination);
+      }
       printf("Would create %s\n", destination);
       continue;
     }
@@ -285,8 +350,9 @@ static int install_paths(const char *repo, const char *home,
         fprintf(stderr, "move: %s: %s\n", destination, strerror(errno));
         goto rollback;
       }
-      if (add_path(&moved, paths->items[i]) == -1)
+      if (add_path(&moved, paths->items[i]) == -1) {
         goto rollback;
+      }
       printf("Move %s to %s\n", destination, backup);
     }
     if (mkdir_parents(destination) == -1 ||
@@ -295,24 +361,31 @@ static int install_paths(const char *repo, const char *home,
               strerror(errno));
       goto rollback;
     }
-    if (add_path(&created, paths->items[i]) == -1)
+    if (add_path(&created, paths->items[i]) == -1) {
       goto rollback;
+    }
     printf("Create %s\n", destination);
   }
+
   result = 0;
-  if (backup_dir != NULL)
+  if (backup_dir != NULL) {
     printf("Backups are available in %s\n", backup_dir);
+  }
+
 rollback:
   if (result == -1 && !dry_run) {
     fprintf(stderr, "Installation failed; restoring changed paths...\n");
     for (size_t i = created.len; i-- > 0;) {
       char destination[PATH_MAX];
       if (path_for(destination, sizeof(destination), home, created.items[i]) ==
-          0)
+          0) {
         unlink(destination);
+      }
     }
     for (size_t i = moved.len; i-- > 0;) {
-      char destination[PATH_MAX], backup[PATH_MAX];
+      char destination[PATH_MAX];
+      char backup[PATH_MAX];
+
       if (path_for(destination, sizeof(destination), home, moved.items[i]) ==
               0 &&
           path_for(backup, sizeof(backup), backup_dir, moved.items[i]) == 0) {
@@ -329,16 +402,17 @@ rollback:
 static void usage(const char *program) {
   fprintf(stderr, "Usage: %s [--dry-run] [-r repository]\n", program);
 }
+
 static int parse_options(int argc, char **argv, struct options *options) {
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--dry-run") == 0)
+    if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--dry-run") == 0) {
       options->dry_run = true;
-    else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+    } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
       usage(argv[0]);
       exit(EXIT_SUCCESS);
-    } else if (strcmp(argv[i], "-r") == 0 && ++i < argc)
+    } else if (strcmp(argv[i], "-r") == 0 && ++i < argc) {
       options->repo = argv[i];
-    else {
+    } else {
       usage(argv[0]);
       return -1;
     }
@@ -348,20 +422,27 @@ static int parse_options(int argc, char **argv, struct options *options) {
 
 int main(int argc, char **argv) {
   struct options options = {0};
-  if (parse_options(argc, argv, &options) == -1)
+  if (parse_options(argc, argv, &options) == -1) {
     return EXIT_FAILURE;
+  }
+
   struct platform platform;
-  if (detect_platform(&platform) != 0)
+  if (detect_platform(&platform) != 0) {
     return EXIT_FAILURE;
+  }
   if (is_nixos(&platform)) {
     fprintf(stderr, "Error: dotman cannot be run on NixOS.\n");
     return EXIT_FAILURE;
   }
-  char cwd[PATH_MAX], repo[PATH_MAX];
+
+  char cwd[PATH_MAX];
+  char repo[PATH_MAX];
+
   if (options.repo == NULL && getcwd(cwd, sizeof(cwd)) == NULL) {
     perror("getcwd");
     return EXIT_FAILURE;
   }
+
   const char *requested_repo = options.repo == NULL ? cwd : options.repo;
   if (realpath(requested_repo, repo) == NULL) {
     fprintf(stderr, "realpath: %s: %s\n", requested_repo, strerror(errno));
@@ -372,13 +453,14 @@ int main(int argc, char **argv) {
     fprintf(stderr, "HOME is not set\n");
     return EXIT_FAILURE;
   }
+
   struct config config;
   struct path_list paths = {0};
-  int result = load_configuration(repo, &config) == 0 &&
-                       load_dotlist(repo, &config, &paths) == 0 &&
-                       preflight(repo, &paths) == 0
-                   ? install_paths(repo, home, &paths, options.dry_run)
-                   : -1;
+  bool ready = load_configuration(repo, &config) == 0 &&
+               load_dotlist(repo, &config, &paths) == 0 &&
+               preflight(repo, &paths) == 0;
+  int result = ready ? install_paths(repo, home, &paths, options.dry_run) : -1;
+
   free_paths(&paths);
   return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

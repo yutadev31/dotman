@@ -56,16 +56,19 @@ int detect_linux_distro(char *distro, size_t size) {
 }
 
 int detect_platform(struct platform *platform) {
-  if (platform == NULL)
+  if (platform == NULL) {
     return -1;
+  }
+
   platform->os = OS_UNKNOWN;
   platform->distro[0] = '\0';
 
   struct utsname uts;
 
   /* Detect the operating system. */
-  if (uname(&uts) == -1)
+  if (uname(&uts) == -1) {
     return -1;
+  }
 
   if (strcmp(uts.sysname, "Linux") == 0) {
     platform->os = OS_LINUX;
