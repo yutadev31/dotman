@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 enum os_type {
   OS_UNKNOWN,
@@ -9,6 +10,7 @@ enum os_type {
   OS_OPENBSD,
   OS_NETBSD,
   OS_DRAGONFLY,
+  OS_SUNOS,
   OS_ILLUMOS,
   OS_MACOS,
 };
@@ -19,4 +21,5 @@ struct platform {
 };
 
 int detect_platform(struct platform *platform);
-bool is_nixos(struct platform *platform);
+int detect_linux_distro_file(const char *path, char *distro, size_t size);
+bool is_nixos(const struct platform *platform);
